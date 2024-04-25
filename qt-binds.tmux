@@ -15,7 +15,7 @@ tmux unbind n
 tmux bind-key n run-shell "$CURRENT_DIR/scripts/new-tab.sh"
 
 tmux unbind C-n
-tmux bind-key C-n display-popup "$CURRENT_DIR/scripts/qt-menu.sh"
+tmux bind-key n run-shell "$CURRENT_DIR/scripts/close-tab.sh"
 
 tmux unbind C-x
 tmux bind-key C-x run-shell "$CURRENT_DIR/scripts/reset-buffer.sh"
