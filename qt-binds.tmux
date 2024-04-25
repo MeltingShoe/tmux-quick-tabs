@@ -3,7 +3,8 @@
 CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 tmux bind-key T run-shell "$CURRENT_DIR/scripts/tmux_list_plugins.sh"
 
-
+tmux unbind x
+tmux bind-key x run-shell "$CURRENT_DIR/scripts/kill-pane.sh"
 
 tmux unbind c
 tmux bind c display-popup -E "$CURRENT_DIR/scripts/new-window.sh"
