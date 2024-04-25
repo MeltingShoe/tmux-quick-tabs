@@ -11,5 +11,4 @@ Right now the bind to delete tabs does not work and it does a poor job of managi
 
 Right now I'm working on refactoring this plugin. It's gonna be cool and have an integrated sessionizer  :)
 
-TODO
-    fix tabs
+tabs are fixed
