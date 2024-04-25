@@ -10,7 +10,7 @@ pane_source=$(tmux display -p "buffer:$buffer_name.1")
 if ! [[ "$buffer_windows" == *"$buffer_name"* ]]; then
 	tmux neww -c -t "buffer:" -n $buffer_name
 	tmux swap-pane -s $active -t $pane_target
-	tmux send-keys "cd \$(zoxide query -l | fzf); cls; ls -a" Enter
+	tmux send-keys "cd \$(zoxide query -l | fzf); clear; ls -a" Enter
 fi
 
 buffer_len=$(tmux list-panes -t $buffer_path | wc -l)
@@ -20,4 +20,4 @@ last_path=$(tmux display -p "buffer:$buffer_name.$buffer_len")
 
 tmux split-window -c "#{pane_current_path}" -t "$last_path"
 tmux swap-pane -s "$dest_path" -t "$active"
-tmux send-keys "cd \$(zoxide query -l | fzf);cls;ls -a" Enter
+tmux send-keys "cd \$(zoxide query -l | fzf);clear;ls -a" Enter
