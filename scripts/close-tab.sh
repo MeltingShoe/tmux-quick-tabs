@@ -23,5 +23,5 @@ last_path=$(tmux display -p "buffer:$buffer_name.$buffer_len")
 tmux kill-pane -t $last_path
 if ! [[ "$buffer_windows" == *"$buffer_name"* ]]; then
 	tmux neww -t "buffer:" -n $buffer_name
-	tmux send-keys "cd \$(zoxide query -l | fzf); cls; ls -a" Enter
+	tmux send-keys "cd \$(zoxide query -l | fzf); clear; ls -a" Enter
 fi

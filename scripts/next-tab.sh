@@ -9,7 +9,7 @@ buffer_path=$(tmux display -p "buffer:$buffer_name")
 if ! [[ "$buffer_windows" == *"$buffer_name"* ]]; then
 	tmux neww -t "buffer:" -n $buffer_name 
 	tmux swap-pane -s $active -t $pane_target
-	tmux send-keys "cd \$(zoxide query -l | fzf); cls; ls -a" Enter
+	tmux send-keys "cd \$(zoxide query -l | fzf); clear; ls -a" Enter
 	tmux swap-pane -s $active -t $pane_target
 fi
 tmux swap-pane -Z -s $active -t $pane_target
