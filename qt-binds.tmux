@@ -19,13 +19,13 @@ tmux unbind c
 tmux bind c display-popup -E "$RUNNER new-window"
 
 tmux unbind -n C-n
-tmux bind-key -n C-n run-shell "$RUNNER next-tab"
+tmux bind-key -n C-n run-shell "$RUNNER next-tab --pane-id '#{pane_id}'"
 
 tmux unbind -n C-t
-tmux bind-key -n C-t run-shell "$RUNNER new-tab"
+tmux bind-key -n C-t run-shell "$RUNNER new-tab --pane-id '#{pane_id}'"
 
 tmux unbind C-n
-tmux bind-key C-n run-shell "$RUNNER choose-tab"
+tmux bind-key C-n run-shell "$RUNNER choose-tab --pane-id '#{pane_id}'"
 
 tmux unbind C-t
-tmux bind-key C-t run-shell "$RUNNER close-tab"
+tmux bind-key C-t run-shell "$RUNNER close-tab --pane-id '#{pane_id}'"
