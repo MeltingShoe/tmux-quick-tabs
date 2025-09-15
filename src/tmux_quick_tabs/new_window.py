@@ -9,6 +9,8 @@ from typing import TextIO
 from libtmux import Server
 from libtmux.exc import LibTmuxException
 
+from .dependencies import REQUIRED_EXECUTABLES, warn_missing_dependencies
+
 __all__ = [
     "INITIALIZATION_COMMAND",
     "NewWindowCommand",
@@ -46,6 +48,7 @@ class NewWindowCommand:
 
         name = self.prompt()
         args = self._split_name(name)
+        warn_missing_dependencies(REQUIRED_EXECUTABLES)
         try:
             self.server.cmd("neww", "-n", *args)
         except LibTmuxException:
