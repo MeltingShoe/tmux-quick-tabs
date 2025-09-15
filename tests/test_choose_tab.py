@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import types
 from pathlib import Path
@@ -123,3 +124,21 @@ def test_run_choose_tab_warns_about_missing_dependencies(monkeypatch: pytest.Mon
 
     pane.cmd.assert_called_once()
     assert record
+
+
+def test_run_choose_tab_resolves_pane_id_from_environment(monkeypatch: pytest.MonkeyPatch):
+    server, pane = make_server_and_pane()
+    pane.cmd.return_value = []
+    tab_session = Mock()
+    tab_session.get.return_value = "tabs_env"
+
+    monkeypatch.setattr(
+        "tmux_quick_tabs.choose_tab.get_or_create_tab_group",
+        lambda p: tab_session,
+    )
+    monkeypatch.setitem(os.environ, "TMUX_PANE", "@42")
+
+    run_choose_tab(server=server)
+
+    server.panes.get.assert_called_once_with(pane_id="@42", default=None)
+    pane.cmd.assert_called_once()

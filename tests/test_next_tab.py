@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from unittest.mock import Mock, call
@@ -12,7 +13,10 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from tmux_quick_tabs.dependencies import DependencyWarning  # noqa: E402  - added to sys.path at runtime
-from tmux_quick_tabs.next_tab import CycleNextTabCommand  # noqa: E402  - added to sys.path at runtime
+from tmux_quick_tabs.next_tab import (  # noqa: E402  - added to sys.path at runtime
+    CycleNextTabCommand,
+    run_cycle_next_tab,
+)
 
 
 def make_pane(*, tab_group: str = "tabs_default", pane_id: str = "%1"):
@@ -24,6 +28,9 @@ def make_pane(*, tab_group: str = "tabs_default", pane_id: str = "%1"):
     pane.session.server = server
     sessions = Mock()
     server.sessions = sessions
+    panes = Mock()
+    server.panes = panes
+    panes.get.return_value = pane
     return pane, server, sessions
 
 
@@ -76,4 +83,20 @@ def test_cycle_next_tab_warns_about_missing_dependencies(monkeypatch: pytest.Mon
 
     assert server.cmd.call_args_list[0] == call("swap-pane", "-s", "%2", "-t", "tabs_warn:1")
     assert record
+
+
+def test_run_cycle_next_tab_resolves_pane_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pane, server, sessions = make_pane(tab_group="tabs_env", pane_id="%13")
+    session = Mock()
+    session.windows = [Mock(), Mock()]
+    sessions.get.return_value = session
+    server.panes.get.return_value = pane
+    monkeypatch.setitem(os.environ, "TMUX_PANE", "%13")
+
+    run_cycle_next_tab(server=server)
+
+    server.panes.get.assert_called_once_with(pane_id="%13", default=None)
+    assert server.cmd.call_args_list[0] == call("swap-pane", "-s", "%13", "-t", "tabs_env:1")
 

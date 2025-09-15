@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from unittest.mock import Mock, call
@@ -14,6 +15,7 @@ if str(SRC_PATH) not in sys.path:
 from tmux_quick_tabs.close_tab import (  # noqa: E402  - added to sys.path at runtime
     ACTIVE_PANE_FORMAT,
     close_tab,
+    run_close_tab,
 )
 from tmux_quick_tabs.dependencies import DependencyWarning  # noqa: E402  - added to sys.path at runtime
 from tmux_quick_tabs.tab_groups import TAB_GROUP_FORMAT  # noqa: E402  - added to sys.path at runtime
@@ -24,6 +26,8 @@ def make_pane(*, tab_group: str = "tabs_main_dev_1", pane_id: str = "%0"):
     server = Mock()
     sessions = Mock()
     server.sessions = sessions
+    panes = Mock()
+    server.panes = panes
     pane.session = Mock()
     pane.session.server = server
 
@@ -35,6 +39,7 @@ def make_pane(*, tab_group: str = "tabs_main_dev_1", pane_id: str = "%0"):
         raise AssertionError(f"Unexpected format string: {format_string}")
 
     pane.display_message.side_effect = display_message
+    panes.get.return_value = pane
     return pane, server, sessions
 
 
@@ -105,3 +110,17 @@ def test_close_tab_warns_about_missing_dependencies(monkeypatch: pytest.MonkeyPa
 
     server.cmd.assert_called_once_with("kill-pane", "-t", "%6")
     assert record
+
+
+def test_run_close_tab_resolves_active_pane_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pane, server, sessions = make_pane(tab_group="tabs_env", pane_id="%11")
+    sessions.get.return_value = None
+    server.panes.get.return_value = pane
+    monkeypatch.setitem(os.environ, "TMUX_PANE", "%11")
+
+    run_close_tab(server=server)
+
+    server.panes.get.assert_called_once_with(pane_id="%11", default=None)
+    server.cmd.assert_called_once_with("kill-pane", "-t", "%11")
