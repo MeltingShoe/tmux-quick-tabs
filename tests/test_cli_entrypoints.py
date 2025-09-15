@@ -11,7 +11,8 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 try:  # pragma: no cover - exercised only when libtmux missing
-    import libtmux  # type: ignore
+    from libtmux import Server  # type: ignore
+    from libtmux.exc import LibTmuxException  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover - executed in CI without libtmux
     import types
 
@@ -31,6 +32,7 @@ except ModuleNotFoundError:  # pragma: no cover - executed in CI without libtmux
 
     exc_module.LibTmuxException = LibTmuxException
     libtmux_module.exc = exc_module
+    libtmux_module.__path__ = []  # type: ignore[attr-defined]
     sys.modules["libtmux"] = libtmux_module
     sys.modules["libtmux.exc"] = exc_module
 

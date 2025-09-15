@@ -4,11 +4,14 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock, call
 
+import pytest
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
+from tmux_quick_tabs.dependencies import DependencyWarning  # noqa: E402  - added to sys.path at runtime
 from tmux_quick_tabs.next_tab import CycleNextTabCommand  # noqa: E402  - added to sys.path at runtime
 
 
@@ -58,4 +61,19 @@ def test_cycle_next_tab_creates_missing_session_with_buggy_command():
         call("new", "-d", "-s", "tabs_work_1_0"),
         call("swap-pane", "-s", "%3", "-t", "tabs_work_1_0:1"),
     ]
+
+
+def test_cycle_next_tab_warns_about_missing_dependencies(monkeypatch: pytest.MonkeyPatch):
+    pane, server, sessions = make_pane(tab_group="tabs_warn", pane_id="%2")
+    session = Mock()
+    session.windows = [Mock(), Mock()]
+    sessions.get.return_value = session
+
+    monkeypatch.setattr("tmux_quick_tabs.dependencies.shutil.which", lambda name: None)
+
+    with pytest.warns(DependencyWarning) as record:
+        CycleNextTabCommand(pane=pane).run()
+
+    assert server.cmd.call_args_list[0] == call("swap-pane", "-s", "%2", "-t", "tabs_warn:1")
+    assert record
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import types
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -9,11 +10,29 @@ SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
+try:  # pragma: no cover - fallback when libtmux missing
+    from libtmux import Server  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - executed only in CI where libtmux missing
+    libtmux_module = types.ModuleType("libtmux")
+
+    class Server:  # type: ignore[too-many-ancestors]
+        """Minimal stub used when libtmux is unavailable during tests."""
+
+        def cmd(self, *args: object, **kwargs: object) -> None:  # pragma: no cover - not used
+            raise NotImplementedError
+
+    libtmux_module.Server = Server
+    libtmux_module.__path__ = []  # type: ignore[attr-defined]
+    sys.modules["libtmux"] = libtmux_module
+
+import pytest
+
 from tmux_quick_tabs.choose_tab import (  # noqa: E402  - added to sys.path at runtime
     CHOOSE_TREE_COMMAND,
     CHOOSE_TREE_FORMAT,
     run_choose_tab,
 )
+from tmux_quick_tabs.dependencies import DependencyWarning  # noqa: E402  - added to sys.path at runtime
 
 
 def make_server_and_pane():
@@ -86,3 +105,21 @@ def test_run_choose_tab_swaps_active_pane_with_chosen_target():
             CHOOSE_TREE_COMMAND,
         )
     ]
+
+
+def test_run_choose_tab_warns_about_missing_dependencies(monkeypatch: pytest.MonkeyPatch):
+    server, pane = make_server_and_pane()
+    tab_session = Mock()
+    tab_session.get.return_value = "tabs_dep_warn"
+
+    monkeypatch.setattr(
+        "tmux_quick_tabs.choose_tab.get_or_create_tab_group",
+        lambda p: tab_session,
+    )
+    monkeypatch.setattr("tmux_quick_tabs.dependencies.shutil.which", lambda name: None)
+
+    with pytest.warns(DependencyWarning) as record:
+        run_choose_tab(server=server, pane_id="@9")
+
+    pane.cmd.assert_called_once()
+    assert record

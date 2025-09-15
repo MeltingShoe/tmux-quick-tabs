@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock, call
 
+import pytest
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
@@ -13,6 +15,7 @@ from tmux_quick_tabs.close_tab import (  # noqa: E402  - added to sys.path at ru
     ACTIVE_PANE_FORMAT,
     close_tab,
 )
+from tmux_quick_tabs.dependencies import DependencyWarning  # noqa: E402  - added to sys.path at runtime
 from tmux_quick_tabs.tab_groups import TAB_GROUP_FORMAT  # noqa: E402  - added to sys.path at runtime
 
 
@@ -89,3 +92,16 @@ def test_close_tab_supports_list_output_for_active_pane_id():
     close_tab(pane)
 
     server.cmd.assert_called_once_with("kill-pane", "-t", "%9")
+
+
+def test_close_tab_warns_about_missing_dependencies(monkeypatch: pytest.MonkeyPatch):
+    pane, server, sessions = make_pane(tab_group="tabs_warn_close", pane_id="%6")
+    sessions.get.return_value = None
+
+    monkeypatch.setattr("tmux_quick_tabs.dependencies.shutil.which", lambda name: None)
+
+    with pytest.warns(DependencyWarning) as record:
+        close_tab(pane)
+
+    server.cmd.assert_called_once_with("kill-pane", "-t", "%6")
+    assert record

@@ -6,6 +6,8 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
@@ -31,11 +33,13 @@ except ModuleNotFoundError:  # pragma: no cover - executed only in CI where libt
     exc_module.LibTmuxException = LibTmuxException
     libtmux_module.Server = Server
     libtmux_module.exc = exc_module
+    libtmux_module.__path__ = []  # type: ignore[attr-defined]
     sys.modules["libtmux"] = libtmux_module
     sys.modules["libtmux.exc"] = exc_module
 
     from libtmux.exc import LibTmuxException  # type: ignore  # noqa: E402
 
+from tmux_quick_tabs.dependencies import DependencyWarning  # noqa: E402  - added to sys.path at runtime
 from tmux_quick_tabs.new_window import INITIALIZATION_COMMAND, run_new_window
 
 
@@ -81,3 +85,22 @@ def test_run_new_window_allows_empty_name_and_still_sends_keys():
         INITIALIZATION_COMMAND,
         "Enter",
     )
+
+
+def test_run_new_window_warns_when_dependencies_missing(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    server = make_mock_server()
+    stdin = StringIO("dev\n")
+    stdout = StringIO()
+
+    monkeypatch.setattr(
+        "tmux_quick_tabs.dependencies.shutil.which",
+        lambda name: None if name == "fzf" else f"/usr/bin/{name}",
+    )
+
+    with pytest.warns(DependencyWarning) as record:
+        run_new_window(server=server, stdin=stdin, stdout=stdout)
+
+    server.cmd.assert_any_call("send-keys", INITIALIZATION_COMMAND, "Enter")
+    assert any("fzf" in str(w.message) for w in record)

@@ -15,6 +15,7 @@ if str(SRC_PATH) not in sys.path:
 
 try:  # pragma: no cover - fallback for environments without libtmux
     from libtmux import Server  # type: ignore
+    from libtmux.exc import LibTmuxException  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover - executed only in CI where libtmux missing
     libtmux_module = types.ModuleType("libtmux")
 
@@ -29,17 +30,22 @@ except ModuleNotFoundError:  # pragma: no cover - executed only in CI where libt
         def cmd(self, *args: object, **kwargs: object) -> None:  # pragma: no cover - not used
             raise NotImplementedError
 
-    sys.modules["libtmux"] = libtmux_module
-    libtmux_module.Server = Server
     exc_module = types.ModuleType("libtmux.exc")
 
     class LibTmuxException(Exception):
-        """Stub exception mirroring libtmux's error type."""
+        """Placeholder exception matching the real libtmux hierarchy."""
 
     exc_module.LibTmuxException = LibTmuxException
+
+    libtmux_module.Server = Server
     libtmux_module.exc = exc_module
+    libtmux_module.__path__ = []  # type: ignore[attr-defined]
+    sys.modules["libtmux"] = libtmux_module
     sys.modules["libtmux.exc"] = exc_module
 
+    from libtmux.exc import LibTmuxException  # type: ignore  # noqa: E402
+
+from tmux_quick_tabs.dependencies import DependencyWarning  # noqa: E402  - added to sys.path at runtime
 from tmux_quick_tabs.new_tab import (  # noqa: E402  - added to sys.path at runtime
     POPUP_COMMAND,
     run_new_tab,
@@ -70,8 +76,6 @@ def test_run_new_tab_swaps_panes_opens_popup_and_rotates(monkeypatch: pytest.Mon
     monkeypatch.setattr(
         "tmux_quick_tabs.new_tab.get_or_create_tab_group", lambda p: tab_group
     )
-    monkeypatch.setattr("tmux_quick_tabs.new_tab.shutil.which", lambda name: f"/usr/bin/{name}")
-
     run_new_tab(server=server, pane=pane)
 
     tab_group.new_window.assert_called_once_with(attach=False)
@@ -99,8 +103,6 @@ def test_run_new_tab_skips_rotation_with_single_hidden_window(monkeypatch: pytes
     monkeypatch.setattr(
         "tmux_quick_tabs.new_tab.get_or_create_tab_group", lambda p: tab_group
     )
-    monkeypatch.setattr("tmux_quick_tabs.new_tab.shutil.which", lambda name: f"/usr/bin/{name}")
-
     run_new_tab(server=server, pane=pane)
 
     assert server.cmd.call_args_list == [
@@ -109,23 +111,33 @@ def test_run_new_tab_skips_rotation_with_single_hidden_window(monkeypatch: pytes
     ]
 
 
-def test_run_new_tab_fails_when_dependencies_missing(monkeypatch: pytest.MonkeyPatch):
+def test_run_new_tab_warns_when_dependencies_missing(monkeypatch: pytest.MonkeyPatch):
     server = Mock(spec=["cmd", "panes"])
     pane = make_pane(server)
 
+    tab_group = Mock()
+    new_window = Mock()
+    new_pane = Mock()
+    new_pane.get.return_value = "%4"
+    new_window.attached_pane = new_pane
+    tab_group.new_window.return_value = new_window
+    tab_group.windows = [Mock(), Mock()]
+    tab_group.get.return_value = "tabs_warn"
+
     monkeypatch.setattr(
-        "tmux_quick_tabs.new_tab.shutil.which",
+        "tmux_quick_tabs.new_tab.get_or_create_tab_group",
+        lambda p: tab_group,
+    )
+    monkeypatch.setattr(
+        "tmux_quick_tabs.dependencies.shutil.which",
         lambda name: None if name == "zoxide" else f"/usr/bin/{name}",
     )
 
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.warns(DependencyWarning) as record:
         run_new_tab(server=server, pane=pane)
 
-    server.cmd.assert_not_called()
-    message = str(excinfo.value)
-    assert "Missing required dependencies" in message
-    assert "zoxide" in message
-    assert "fzf" not in message
+    assert server.cmd.call_args_list[0] == call("swap-pane", "-s", "%1", "-t", "%4")
+    assert any("zoxide" in str(w.message) for w in record)
 
 
 def test_run_new_tab_resolves_active_pane_from_server(monkeypatch: pytest.MonkeyPatch):
@@ -146,8 +158,6 @@ def test_run_new_tab_resolves_active_pane_from_server(monkeypatch: pytest.Monkey
     monkeypatch.setattr(
         "tmux_quick_tabs.new_tab.get_or_create_tab_group", lambda p: tab_group
     )
-    monkeypatch.setattr("tmux_quick_tabs.new_tab.shutil.which", lambda name: f"/usr/bin/{name}")
-
     with patch.dict(os.environ, {"TMUX_PANE": "%9"}, clear=False):
         run_new_tab(server=server)
 
