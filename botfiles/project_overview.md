@@ -9,7 +9,7 @@
 - **Cycle to the next tab** using `C-n` through `next-tab.sh`, rotating panes from the background session.
 - **Choose from existing tabs** via an interactive tree (`choose-tab.sh`) bound to `C-n`.
 - **Close the current tab** with `C-t` (`close-tab.sh`) that replaces it with the next stored pane or kills the pane if no group exists.
-- **Create new windows** using `c` (`new-window.sh`) which prompts for a name and starting directory.
+- **Create new windows** using `c` (`new-window.sh`) which prompts for a name and starting directory. The script performs no validation, so an empty name causes `tmux neww -n` to fail with a usage error.
 
 ## Implementation Details
 - Tabs are stored in an off-screen session named using `tabs_<session>_<window>_<pane>` and managed with `swap-pane` and `new-window` calls.
