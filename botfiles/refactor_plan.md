@@ -1,5 +1,7 @@
 # Refactor Execution Plan
 
+> **Start here:** Before executing any prompt below, read `AGENTS.md` for repository-wide rules, confirm your step and its dependencies, and review program requirements in `botfiles/refactor_requirements.md`.
+
 ### Step 1 — Establish Python project scaffolding
 *Dependencies:* none  
 Create a new directory structure, `pyproject.toml`, and an entry module (e.g., `tmux_quick_tabs/__init__.py`). Configure linting/formatting hooks and virtual environment.
