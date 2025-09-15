@@ -24,7 +24,8 @@ __all__ = [
 ]
 
 REQUIRED_EXECUTABLES = ("zoxide", "fzf")
-POPUP_COMMAND = f'tmux send-keys "{INITIALIZATION_COMMAND}" Enter'
+_ESCAPED_INITIALIZATION_COMMAND = INITIALIZATION_COMMAND.replace("$", r"\$")
+POPUP_COMMAND = f'tmux send-keys "{_ESCAPED_INITIALIZATION_COMMAND}" Enter'
 
 
 @dataclass(slots=True)

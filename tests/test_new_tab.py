@@ -29,13 +29,21 @@ except ModuleNotFoundError:  # pragma: no cover - executed only in CI where libt
         def cmd(self, *args: object, **kwargs: object) -> None:  # pragma: no cover - not used
             raise NotImplementedError
 
+    class LibTmuxException(Exception):  # pragma: no cover - not used
+        """Placeholder to satisfy imports when libtmux is unavailable."""
+
     sys.modules["libtmux"] = libtmux_module
     libtmux_module.Server = Server
+    libtmux_exc_module = types.ModuleType("libtmux.exc")
+    libtmux_exc_module.LibTmuxException = LibTmuxException
+    sys.modules["libtmux.exc"] = libtmux_exc_module
+    libtmux_module.exc = libtmux_exc_module
 
 from tmux_quick_tabs.new_tab import (  # noqa: E402  - added to sys.path at runtime
     POPUP_COMMAND,
     run_new_tab,
 )
+from tmux_quick_tabs.new_window import INITIALIZATION_COMMAND  # noqa: E402
 
 
 def make_pane(server: Mock, pane_id: str = "%1") -> Mock:
@@ -44,6 +52,11 @@ def make_pane(server: Mock, pane_id: str = "%1") -> Mock:
     pane.session = Mock()
     pane.session.server = server
     return pane
+
+
+def test_popup_command_escapes_shell_expansion() -> None:
+    expected_initialization = INITIALIZATION_COMMAND.replace("$", "\\$")
+    assert POPUP_COMMAND == f'tmux send-keys "{expected_initialization}" Enter'
 
 
 def test_run_new_tab_swaps_panes_opens_popup_and_rotates(monkeypatch: pytest.MonkeyPatch):
