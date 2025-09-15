@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tmux-quick-tabs"
+version = "0.1.0"
+description = "A Python rewrite of the tmux-quick-tabs plugin."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "meltingshoe" },
+]
+dependencies = [
+  "libtmux>=0.28",
+]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+keywords = ["tmux", "tabs", "productivity"]
+
+[project.urls]
+Homepage = "https://github.com/meltingshoe/tmux-quick-tabs"
+Repository = "https://github.com/meltingshoe/tmux-quick-tabs"
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit>=3.5",
+  "ruff>=0.4.7",
+]
+
+[project.scripts]
+tmux-quick-tabs = "tmux_quick_tabs.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = [{ include = "tmux_quick_tabs", from = "src" }]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/tmux_quick_tabs",
+  "tests",
+  "README.md",
+  "pyproject.toml",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E203"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint.isort]
+combine-as-imports = true

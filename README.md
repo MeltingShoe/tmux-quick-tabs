@@ -24,3 +24,31 @@ Slide-over tab group
   just a floating window
   probably have to attach it to a session tho which will be hard
 tabs are fixed
+
+## Development setup
+
+The Python rewrite lives in the `src/tmux_quick_tabs` package and is distributed via
+`pyproject.toml`.  To work on the refactor you can create an isolated environment and
+install the editable project plus development tools:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+pre-commit install
+```
+
+The `pre-commit` hooks format and lint the codebase with [Ruff](https://github.com/astral-sh/ruff)
+whenever you commit changes.  Run them manually with `pre-commit run --all-files` when needed.
+
+When the virtual environment is active your shell prompt should include `(.venv)`.  Deactivate
+it with `deactivate` once you finish hacking.
+
+You can inspect the placeholder CLI with:
+
+```bash
+python -m tmux_quick_tabs --version
+```
+
+Future steps in the refactor will flesh out the Python package to replace the shell scripts
+shipped with this repository today.
