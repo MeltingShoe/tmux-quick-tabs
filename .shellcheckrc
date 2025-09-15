@@ -1,0 +1,11 @@
+# ShellCheck configuration for tmux-quick-tabs legacy scripts.
+# The scripts mirror historical tmux behaviour, including unquoted variables
+# and other patterns flagged as style issues. Disable those diagnostics so that
+# ShellCheck can focus on surfacing correctness problems without rewriting the
+# reference implementations.
+disable=SC2086
+disable=SC2116
+disable=SC2034
+disable=SC2181
+disable=SC2004
+disable=SC2162

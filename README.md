@@ -74,5 +74,22 @@ You can inspect the placeholder CLI with:
 python -m tmux_quick_tabs --version
 ```
 
+### Automated tests and linting
+
+Run the Python unit tests with [pytest](https://docs.pytest.org/):
+
+```bash
+pytest
+```
+
+The legacy shell scripts remain the reference implementation for tmux behaviour
+and are linted with [ShellCheck](https://www.shellcheck.net/) using a
+configuration that suppresses style-only warnings which would otherwise require
+rewriting them:
+
+```bash
+shellcheck scripts/*.sh
+```
+
 Future steps in the refactor will flesh out the Python package to replace the shell scripts
 shipped with this repository today.
