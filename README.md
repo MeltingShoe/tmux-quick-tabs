@@ -169,3 +169,13 @@ behaviour identical to the legacy implementation.  Ensure the Python interpreter
 select via `@quick_tabs_python` has `libtmux`, `zoxide`, and `fzf` available so the popup
 initialisation succeeds.  Existing key sequences stay the same, so the upgrade does not
 require relearning muscle memory.
+
+Implement Step 12: migration and maintenance notes.
+Goals:
+1. Explain how to transition from shell scripts to the Python plugin.
+2. Outline ongoing maintenance practices and future improvement ideas.
+Requirements:
+- Highlight common pitfalls encountered during migration.
+- Suggest monitoring or troubleshooting tips for maintainers.
+Deliverables:
+- Migration guide and maintenance notes appended to documentation.
