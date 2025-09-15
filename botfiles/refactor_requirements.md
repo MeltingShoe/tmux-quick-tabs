@@ -5,6 +5,7 @@ This document captures the exact behaviour of the current `tmux-quick-tabs` plug
 ## Core Concepts
 
 - **Hidden tab session**: Each pane tracks a background session used as a tab buffer.  The name is produced with `tabs_<session>_<window>_<pane>` via `tmux display -p "tabs_#S_#W_#P"`.
+- **TPM installation**: Must support installation through the tmux plugin manager (`tmux-plugins/tpm`) by adding `set -g @plugin 'meltingshoe/tmux-quick-tabs'`.
 - **Tab storage**: Every tab is represented by a window inside the hidden session.  `swap-pane` is used to move panes in and out of this session.
 
 ## Key Bindings
@@ -24,22 +25,21 @@ Bindings are defined in `qt-binds.tmux` and must be recreated exactly:
 3. Create a detached window in the tab-group and capture its id.
 4. Swap the active pane with the new tab-group window.
 5. Open a popup that executes `create-tab.sh`.
-6. Rotate windows in the tab-group by sequentially swapping `tabs:N` with `tabs:N+1` starting from index `1`.
-7. **Dependencies/Bugs**:
+6. If the tab-group contains at least two windows, rotate them by sequentially swapping `tabs:N` with `tabs:N+1` for `N` in `1..buffer_len-1`, shifting panes left.
+7. **Dependencies**:
    - Requires `zoxide` and `fzf` through `create-tab.sh`.
-   - Rotation loop indexes panes starting at `1` which can address a non-existent pane at the end.
 
 ### Cycling to the Next Tab (`C-n` without prefix)
 1. Determine tab-group name.
 2. If the session does not exist, attempt to create it using `tmux new -d -s` (note the incorrect command; it should be `new-session`).
 3. Swap the active pane with `tab_group:1`.
-4. Rotate remaining panes exactly as in **Creating a New Tab**.
+4. If the tab-group contains at least two windows, rotate panes by sequentially swapping `tabs:N` with `tabs:N+1` for `N` in `1..buffer_len-1`, shifting panes left.
 5. **Bug**: Using `tmux new` instead of `new-session` means the session may not be created, preventing tab cycling when no tab-group exists.
 
 ### Choosing a Tab (`prefix + C-n`)
 1. Compute tab-group name.
 2. Ensure the tab-group session exists.
-3. Invoke `tmux choose-tree` filtered to panes belonging to the tab-group session.
+3. Invoke `tmux choose-tree -F "#{pane_title} #{pane_current_command} #{pane_current_path}" -f "#{==:#{session_name},$(echo $tab_group)}"` to list only panes from the hidden tab session with each entry showing title, current command, and path.
 4. When an entry is selected, execute `swap-pane -t '%%'` to swap with the chosen pane.
 5. An unused variable captures `session_name:window_name`, serving no functional purpose.
 
@@ -53,7 +53,7 @@ Bindings are defined in `qt-binds.tmux` and must be recreated exactly:
 1. Prompt for a window name and read it from stdin.
 2. Create the window with `tmux neww -n <name>`.
 3. Send the command `cd $(zoxide query -l | fzf); clear; ls -a` to the new pane.
-4. **Limitations**: No error handling if `zoxide` or `fzf` are absent; empty input creates an unnamed window.
+4. **Limitations**: The script performs no validation; an empty name causes `tmux neww -n` to exit with a usage error, and it assumes `zoxide` and `fzf` are available.
 
 ### Popup Tab Initialization (`create-tab.sh`)
 1. Executed in a popup after a new tab is created.
