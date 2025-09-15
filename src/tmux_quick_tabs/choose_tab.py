@@ -6,6 +6,9 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+
+from libtmux import Server
+
 from .dependencies import REQUIRED_EXECUTABLES, warn_missing_dependencies
 from .tab_groups import format_tab_group_name, get_or_create_tab_group
 
