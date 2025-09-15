@@ -1,6 +1,34 @@
 # Refactor Steps and Agent Prompts
 
-> **Start here:** Before executing any prompt below, read `AGENTS.md` for repository-wide rules, confirm your step and its dependencies in `botfiles/refactor_plan.md`, and review behavioural requirements in `botfiles/refactor_requirements.md`.
+## Orchestrating Multiple Agents
+
+### Dependency Graph Highlights
+- **Root:** Step 1 must complete before any other step.
+- **Early Parallelism:**  
+  After Step 2 finishes, Steps 3–6 can run in parallel since they all depend on tab-group logic but not on each other.  
+  Step 7 can begin once Step 1 is done (independent of Step 2).
+- **Integration Phase:**  
+  Step 8 waits for Steps 3–7.  
+  Step 9 depends on Steps 3–7 as well but can run concurrently with Step 8.  
+  Step 10 requires Steps 3–9 to be finished.  
+  Step 11 waits on tests (Step 10), and Step 12 follows documentation updates.
+
+### Suggested Orchestration
+1. **Agent A:** complete Step 1 → spawn Agent B for Step 2 and Agent C for Step 7 simultaneously.
+2. **Agent B:** once Step 2 done, spawn Agents D–G for Steps 3–6 in parallel.
+3. **Agents D–G + C:** once all finish, spawn Agents H (Step 8) and I (Step 9) concurrently.
+4. **Agent J:** after H and I complete, handle Step 10.
+5. **Agent K:** proceed with Step 11.
+6. **Agent L:** finalize with Step 12.
+
+This orchestration allows maximum concurrency while respecting dependencies. A single agent could instead follow the numbered steps sequentially.
+
+---
+
+## Execution Notes
+- Each agent should reference `botfiles/refactor_requirements.md` to match existing behavior.
+- Encourage agents to write unit tests early (within their step) to reduce integration issues later.
+- Use a shared issue tracker or checklist to mark completion and unblock dependent tasks.
 
 ## Step 1 — Establish Python project scaffolding
 *Dependencies:* none
