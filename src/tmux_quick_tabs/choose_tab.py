@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from libtmux import Server
 
+from .dependencies import REQUIRED_EXECUTABLES, warn_missing_dependencies
 from .tab_groups import format_tab_group_name, get_or_create_tab_group
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
@@ -39,6 +40,7 @@ class ChooseTabCommand:
     def run(self) -> None:
         """Execute the command."""
 
+        warn_missing_dependencies(REQUIRED_EXECUTABLES)
         tab_group = get_or_create_tab_group(self.pane)
         session_name = None
         if hasattr(tab_group, "get"):

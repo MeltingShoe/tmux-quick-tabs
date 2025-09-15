@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .dependencies import REQUIRED_EXECUTABLES, warn_missing_dependencies
 from .tab_groups import format_tab_group_name
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
@@ -38,6 +39,7 @@ class CloseTabCommand:
     def run(self) -> None:
         """Execute the close-tab command."""
 
+        warn_missing_dependencies(REQUIRED_EXECUTABLES)
         tab_group_name = format_tab_group_name(self.pane)
         active_pane_id = _format_active_pane_id(self.pane)
         server = self.pane.session.server

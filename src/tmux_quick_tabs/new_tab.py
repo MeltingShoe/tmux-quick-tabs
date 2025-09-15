@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
-import shutil
 from typing import TYPE_CHECKING
 
 from libtmux import Server
 
+from .dependencies import REQUIRED_EXECUTABLES, warn_missing_dependencies
 from .new_window import INITIALIZATION_COMMAND
 from .tab_groups import get_or_create_tab_group
 
@@ -22,8 +22,6 @@ __all__ = [
     "NewTabCommand",
     "run_new_tab",
 ]
-
-REQUIRED_EXECUTABLES = ("zoxide", "fzf")
 POPUP_COMMAND = f'tmux send-keys "{INITIALIZATION_COMMAND}" Enter'
 
 
@@ -41,7 +39,7 @@ class NewTabCommand:
     def run(self) -> None:
         """Execute the command."""
 
-        self._ensure_dependencies_available()
+        warn_missing_dependencies(REQUIRED_EXECUTABLES)
         tab_group = get_or_create_tab_group(self.pane)
         active_pane_id = self._active_pane_id()
 
@@ -57,12 +55,6 @@ class NewTabCommand:
         self.server.cmd("swap-pane", "-s", active_pane_id, "-t", new_pane_id)
         self.server.cmd("display-popup", "-E", POPUP_COMMAND)
         self._rotate_hidden_windows(tab_group)
-
-    def _ensure_dependencies_available(self) -> None:
-        missing = [name for name in REQUIRED_EXECUTABLES if shutil.which(name) is None]
-        if missing:
-            deps = ", ".join(sorted(missing))
-            raise RuntimeError(f"Missing required dependencies: {deps}")
 
     def _active_pane_id(self) -> str:
         pane_id = self.pane.get("pane_id")
