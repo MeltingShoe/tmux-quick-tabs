@@ -1,59 +1,143 @@
 # tmux-quick-tabs
-Allows you to add multiple "tabs" inside a pane that you can quickly switch between. There are many ways to switch between multiple views, and this same functionality can be achieved in different(easier) ways. Right now this is just a small personal project and it's very unpolished. If anyone does use this let me know what you think.
 
+A tmux plugin that emulates browser-style tabs inside a single pane.  Each tab is
+implemented as a hidden tmux window that can be swapped in and out instantly.  The
+current refactor rewrote the original shell scripts in Python using
+[`libtmux`](https://github.com/tmux-python/libtmux) so the behaviour from the legacy
+implementation (Steps&nbsp;2–7 of the plan) is preserved while gaining test coverage and
+installability improvements from Steps&nbsp;8–10.
 
-Now we have tpm support! So if you wanna use this just add
-```
+## Overview
+
+- Every active pane owns a detached session named `tabs_<session>_<window>_<pane>` that
+  stores its hidden tab windows, matching the shell implementation captured in the
+  refactor requirements.
+- Python entrypoints under `tmux_quick_tabs/` mirror the `scripts/*.sh` commands and are
+  invoked by TPM bindings defined in `qt-binds.tmux` (Step&nbsp;9).
+- Optional dependency checks warn about missing `zoxide` or `fzf` (Step&nbsp;8) but never
+  abort the command so the preserved shell quirks remain visible.
+- The automated tests from Step&nbsp;10 exercise the libtmux interactions for each command;
+  see [Development & testing](#development--testing) for instructions.
+
+## Installation
+
+### Install with TPM
+
+Add the plugin to your TPM list and install it with `prefix + I`:
+
+```tmux
 set -g @plugin 'meltingshoe/tmux-quick-tabs'
 ```
 
-## Key bindings
+TPM will clone the repository and source `qt-binds.tmux`, which wires the Python CLI
+into tmux key bindings.
 
-The tmux plugin installs the following bindings when sourced by TPM:
+### Manual installation
 
-* `prefix + c` opens a popup that runs the Python entrypoint `tmux-quick-tabs new-window`.
-* `C-n` (no prefix) runs `tmux-quick-tabs next-tab` to cycle to the next stored pane.
-* `C-t` (no prefix) runs `tmux-quick-tabs new-tab` to create a new tab and open the popup prompt.
-* `prefix + C-n` runs `tmux-quick-tabs choose-tab` to display a filtered `choose-tree`.
-* `prefix + C-t` runs `tmux-quick-tabs close-tab` to swap the current pane into the hidden session and kill it.
+Clone the repository and source the binding script from your `~/.tmux.conf`:
 
-These commands map directly to the Python modules in `src/tmux_quick_tabs` and mirror the legacy shell scripts.
-
-### Configuration options
-
-The plugin looks for the tmux option `@quick_tabs_python` to determine which Python interpreter to use. If the option is unset,
-`python3` is used. Example:
-
+```tmux
+set -g @plugin 'tmux-plugins/tpm'          # if you still use TPM for other plugins
+run-shell "~/bin/tmux-quick-tabs/qt-binds.tmux"
 ```
+
+Adjust the path to match the clone location (for example
+`~/.tmux/plugins/tmux-quick-tabs/qt-binds.tmux`).  The binding script configures
+tmux to call the Python entrypoints and sets `PYTHONPATH` so the package imports work
+without a separate installation step.
+
+### Configure the Python interpreter
+
+The bindings honour the optional `@quick_tabs_python` setting to choose which Python
+interpreter runs the commands:
+
+```tmux
 set -g @quick_tabs_python "/usr/bin/python3.11"
 ```
 
-The entrypoints set `PYTHONPATH` to the plugin's `src` directory so they can run when the repository is cloned by TPM without a
-separate installation step.
+When the option is unset, `python3` is used.  Ensure the interpreter you select has
+`libtmux` available so the commands can run.
 
-Right now the bind to delete tabs does not work and it does a poor job of managing state so I wouldn't recommend installing this unless you're comfortable with managing session manually. If you end up with a lot of "dead" tabs that are stuck in the buffer without being tied to a pane you can type prefix C-x to destroy all of the panes in the buffer, leaving you with just the windows/panes in your active session.
+## Key bindings
 
-Right now I'm working on refactoring this plugin. It's gonna be cool and have an integrated sessionizer  :)
+The plugin installs the following bindings when `qt-binds.tmux` is sourced:
 
-TODO: 
-define a set of tabs to always be shared(ie .tmux.conf init.lua) that you can switch into any tab
-  they're like, temporary. So you can always press a button to start swapping into those tabs and when you press the normal swap button it goes back
-Same thing but for extra project files
-  so when you're working on 2-3 files in a repo it could go and open all the other files in that repo in the extra tab
-  works largely the same as global shared tabs
-  but there's a button to add the current tab into the tab group
-  and when you close tabs they can be send here instead
-Slide-over tab group
-  ipad slide over
-  just a floating window
-  probably have to attach it to a session tho which will be hard
-tabs are fixed
+- `prefix + c` – open a popup that prompts for a window name and runs `tmux-quick-tabs new-window`.
+- `C-n` (no prefix) – cycle to the next stored tab via `tmux-quick-tabs next-tab`.
+- `C-t` (no prefix) – capture the current pane as a hidden tab with `tmux-quick-tabs new-tab`.
+- `prefix + C-n` – list hidden tabs in a filtered `choose-tree` using `tmux-quick-tabs choose-tab`.
+- `prefix + C-t` – swap the active pane into the hidden session and kill it with `tmux-quick-tabs close-tab`.
 
-## Development setup
+## Command behaviour and preserved quirks
 
-The Python rewrite lives in the `src/tmux_quick_tabs` package and is distributed via
-`pyproject.toml`.  To work on the refactor you can create an isolated environment and
-install the editable project plus development tools:
+### Hidden tab sessions
+
+`tab_groups.py` mirrors `tmux display -p "tabs_#S_#W_#P"` to derive the detached session
+used for storage.  Sessions are created on demand and left running, matching the shell
+behaviour described in the requirements.
+
+### `C-t` — create a new tab
+
+`new_tab.py` creates a detached window in the hidden session, swaps it with the active
+pane, opens a popup, and rotates the hidden buffer so the newest pane ends up last.
+The popup executes `cd $(zoxide query -l | fzf); clear; ls -a`, so both dependencies
+should be on `PATH`.  When they are missing the command emits the Step&nbsp;8 warnings but
+continues running.
+
+### `C-n` — cycle to the next tab
+
+`next_tab.py` swaps the active pane into `tabs_*:1` and rotates the hidden session.  The
+implementation intentionally invokes `tmux new -d -s` instead of `new-session`,
+preserving the historical bug where the session might not be created if it is missing.
+The swap is attempted regardless so failures mirror the original experience.
+
+### `prefix + C-n` — choose a tab
+
+`choose_tab.py` ensures the hidden session exists and launches `choose-tree` filtered to
+`tabs_*` panes.  Each entry shows the pane title, current command, and path exactly like
+the shell script, and the `swap-pane` action is triggered when you pick an entry.
+
+### `prefix + C-t` — close the current tab
+
+`close_tab.py` swaps the active pane with `tabs_*:1`, kills the stored pane, and leaves
+the hidden session alive even when empty.  This matches the shell leak described in the
+plan, so you may need to destroy stray `tabs_*` sessions manually when cleaning up.
+
+### `prefix + c` — create a new window
+
+`new_window.py` prompts for a name, reproduces shell-style word splitting, and then runs
+`tmux neww -n <name>`.  Failures from `tmux neww` are ignored so the initialisation
+command (`cd $(zoxide query -l | fzf); clear; ls -a`) is still sent, matching the legacy
+behaviour and its lack of validation.
+
+## Dependencies & environment
+
+- **tmux:** The popup workflow requires tmux 3.2 or newer for `display-popup`.
+- **Python:** The project targets Python 3.9+ (see `pyproject.toml`).
+- **libtmux:** Version 0.28 or newer must be installed in the interpreter specified by
+  `@quick_tabs_python`.
+- **Optional tools:** `zoxide` and `fzf` power the popup initialisation flow.  Missing
+  tools trigger warnings but the commands still execute.
+- **Environment variables:** When you invoke the CLI outside of tmux you must provide
+  `--pane-id`; otherwise the commands fall back to `$TMUX_PANE` like the original scripts.
+
+## Known limitations
+
+- Cycling to the next tab may fail to create the hidden session because the preserved
+  `tmux new` call does not behave like `new-session`.
+- Closing tabs leaves the hidden session running, so orphaned `tabs_*` sessions can
+  accumulate and require manual cleanup (for example with `tmux kill-session -t <name>`).
+- The popup initialisation still assumes `zoxide` and `fzf` are installed; the Step&nbsp;8
+  warnings highlight the issue but do not provide fallbacks.
+- The new-window popup forwards whatever name you enter to `tmux neww -n` without
+  validation, so blank names reproduce the original usage error from tmux.
+
+## Development & testing
+
+### Local development environment
+
+Create an isolated environment, install the editable project, and set up the formatting
+hooks introduced during the refactor:
 
 ```bash
 python -m venv .venv
@@ -62,34 +146,26 @@ pip install -e '.[dev]'
 pre-commit install
 ```
 
-The `pre-commit` hooks format and lint the codebase with [Ruff](https://github.com/astral-sh/ruff)
-whenever you commit changes.  Run them manually with `pre-commit run --all-files` when needed.
+`pre-commit` runs Ruff formatting and linting whenever you commit.  Activate the virtual
+environment whenever you work on the plugin so `libtmux` and the dev tools are available.
 
-When the virtual environment is active your shell prompt should include `(.venv)`.  Deactivate
-it with `deactivate` once you finish hacking.
+### Running checks
 
-You can inspect the placeholder CLI with:
-
-```bash
-python -m tmux_quick_tabs --version
-```
-
-### Automated tests and linting
-
-Run the Python unit tests with [pytest](https://docs.pytest.org/):
+The automated tests and linting from Step&nbsp;10 cover the Python rewrite and the
+remaining shell scripts.  Run them with:
 
 ```bash
 pytest
-```
-
-The legacy shell scripts remain the reference implementation for tmux behaviour
-and are linted with [ShellCheck](https://www.shellcheck.net/) using a
-configuration that suppresses style-only warnings which would otherwise require
-rewriting them:
-
-```bash
+pre-commit run --all-files
 shellcheck scripts/*.sh
 ```
 
-Future steps in the refactor will flesh out the Python package to replace the shell scripts
-shipped with this repository today.
+## Migration from the shell scripts
+
+If you previously bound the shell scripts directly, replace those bindings with a call to
+`qt-binds.tmux` so tmux executes the Python CLI instead.  The shell scripts remain in
+`scripts/` as references, but the new bindings drive the tested Python modules and keep
+behaviour identical to the legacy implementation.  Ensure the Python interpreter you
+select via `@quick_tabs_python` has `libtmux`, `zoxide`, and `fzf` available so the popup
+initialisation succeeds.  Existing key sequences stay the same, so the upgrade does not
+require relearning muscle memory.
