@@ -6,12 +6,10 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from libtmux import Server
-
 from .tab_groups import format_tab_group_name, get_or_create_tab_group
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
-    from libtmux import Pane
+    from libtmux import Pane, Server
 
 __all__ = [
     "CHOOSE_TREE_COMMAND",
@@ -55,7 +53,7 @@ class ChooseTabCommand:
         )
 
 
-def _resolve_pane(server: Server, pane_id: str | None) -> "Pane":
+def _resolve_pane(server: "Server", pane_id: str | None) -> "Pane":
     """Return the tmux pane identified by *pane_id*."""
 
     if pane_id is None:
@@ -73,14 +71,17 @@ def _resolve_pane(server: Server, pane_id: str | None) -> "Pane":
 
 def run_choose_tab(
     *,
-    server: Server | None = None,
+    server: "Server" | None = None,
     pane: "Pane" | None = None,
     pane_id: str | None = None,
 ) -> None:
     """Run the choose-tab command for *pane* or the active tmux pane."""
 
     if pane is None:
-        server = Server() if server is None else server
+        if server is None:
+            from libtmux import Server as LibtmuxServer  # pragma: no cover - imported lazily
+
+            server = LibtmuxServer()
         pane = _resolve_pane(server, pane_id)
     else:
         if server is None:

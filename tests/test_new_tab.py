@@ -31,6 +31,14 @@ except ModuleNotFoundError:  # pragma: no cover - executed only in CI where libt
 
     sys.modules["libtmux"] = libtmux_module
     libtmux_module.Server = Server
+    exc_module = types.ModuleType("libtmux.exc")
+
+    class LibTmuxException(Exception):
+        """Stub exception mirroring libtmux's error type."""
+
+    exc_module.LibTmuxException = LibTmuxException
+    libtmux_module.exc = exc_module
+    sys.modules["libtmux.exc"] = exc_module
 
 from tmux_quick_tabs.new_tab import (  # noqa: E402  - added to sys.path at runtime
     POPUP_COMMAND,
