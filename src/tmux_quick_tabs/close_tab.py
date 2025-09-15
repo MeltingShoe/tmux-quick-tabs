@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -10,8 +11,9 @@ from .tab_groups import format_tab_group_name
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
     from libtmux import Pane
+    from libtmux.server import Server
 
-__all__ = ["ACTIVE_PANE_FORMAT", "CloseTabCommand", "close_tab"]
+__all__ = ["ACTIVE_PANE_FORMAT", "CloseTabCommand", "close_tab", "run_close_tab"]
 
 # Matches ``tmux display -p "#{pane_id}"`` from the shell implementation.
 ACTIVE_PANE_FORMAT = "#{pane_id}"
@@ -61,3 +63,35 @@ def close_tab(pane: "Pane") -> None:
     """Convenience wrapper around :class:`CloseTabCommand`."""
 
     CloseTabCommand(pane=pane).run()
+
+
+def _resolve_pane(server: "Server", pane_id: str | None) -> "Pane":
+    if pane_id is None:
+        try:
+            pane_id = os.environ["TMUX_PANE"]
+        except KeyError as exc:  # pragma: no cover - defensive programming
+            raise RuntimeError(
+                "tmux-quick-tabs cannot determine the active pane; provide pane_id or set TMUX_PANE."
+            ) from exc
+    pane = server.panes.get(pane_id=pane_id, default=None)
+    if pane is None:  # pragma: no cover - defensive programming
+        raise RuntimeError(f"tmux pane {pane_id!r} not found")
+    return pane
+
+
+def run_close_tab(
+    *,
+    server: "Server" | None = None,
+    pane: "Pane" | None = None,
+    pane_id: str | None = None,
+) -> None:
+    """Execute the close-tab command for the active tmux pane."""
+
+    if pane is None:
+        if server is None:
+            from libtmux import Server as LibtmuxServer  # pragma: no cover - imported lazily
+
+            server = LibtmuxServer()
+        pane = _resolve_pane(server, pane_id)
+
+    close_tab(pane)

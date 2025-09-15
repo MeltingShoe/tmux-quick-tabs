@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -12,7 +13,7 @@ if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
     from libtmux import Pane, Session
     from libtmux.server import Server
 
-__all__ = ["CycleNextTabCommand", "cycle_next_tab"]
+__all__ = ["CycleNextTabCommand", "cycle_next_tab", "run_cycle_next_tab"]
 
 
 @dataclass(slots=True)
@@ -83,4 +84,38 @@ def cycle_next_tab(pane: "Pane") -> None:
     """Convenience wrapper that executes :class:`CycleNextTabCommand`."""
 
     CycleNextTabCommand(pane=pane).run()
+
+
+def _resolve_active_pane(
+    server: "Server", pane_id: str | None,
+) -> "Pane":
+    if pane_id is None:
+        try:
+            pane_id = os.environ["TMUX_PANE"]
+        except KeyError as exc:  # pragma: no cover - defensive programming
+            raise RuntimeError(
+                "tmux-quick-tabs cannot determine the active pane; provide pane_id or set TMUX_PANE."
+            ) from exc
+    pane = server.panes.get(pane_id=pane_id, default=None)
+    if pane is None:  # pragma: no cover - defensive programming
+        raise RuntimeError(f"tmux pane {pane_id!r} not found")
+    return pane
+
+
+def run_cycle_next_tab(
+    *,
+    server: "Server" | None = None,
+    pane: "Pane" | None = None,
+    pane_id: str | None = None,
+) -> None:
+    """Execute the cycle-next-tab command for the active tmux pane."""
+
+    if pane is None:
+        if server is None:
+            from libtmux import Server as LibtmuxServer  # pragma: no cover - imported lazily
+
+            server = LibtmuxServer()
+        pane = _resolve_active_pane(server, pane_id)
+
+    cycle_next_tab(pane)
 
